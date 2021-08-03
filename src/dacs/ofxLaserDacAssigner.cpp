@@ -28,12 +28,13 @@ DacAssigner :: DacAssigner() {
 		ofLog(OF_LOG_ERROR, "Multiple ofxLaser::DacManager instances created");
         throw;
 	}
-    
+
+    dacManagers.push_back(new DacManagerAudio());
     dacManagers.push_back(new DacManagerLaserdock());
     dacManagers.push_back(new DacManagerHelios());
     dacManagers.push_back(new DacManagerEtherdream());
     updateDacList();
-	
+
 }
 
 DacAssigner :: ~DacAssigner() {
@@ -41,37 +42,37 @@ DacAssigner :: ~DacAssigner() {
 }
 
 const vector<DacData>& DacAssigner ::getDacList(){
-    return dacDataList; 
+    return dacDataList;
 }
 
 const vector<DacData>& DacAssigner ::updateDacList(){
-    
+
     // get a new list of dacdata
     vector<DacData> newdaclist;
-    
+
     for(DacManagerBase* dacManager : dacManagers) {
         // ask every dac manager for an updated list of DacData objects
         // and insert them into our new vector.
         vector<DacData> newdacs = dacManager->updateDacList();
         newdaclist.insert( newdaclist.end(), newdacs.begin(), newdacs.end() );
-        
+
     }
-    
+
     // go through the existing list, check against the new
     // list and if it can't find it any more, mark it as
     // unavailable.
-    
+
     for(DacData& dacdata : dacDataList) {
         bool nowavailable = false;
         for(DacData& newdacdata : newdaclist) {
             // compare the new dac to the existing one
             if(newdacdata.id == dacdata.id) {
-                
+
                 // Store the new dac's availability
                 // (the new dac should always be
                 // available but just in case...)
                 nowavailable = newdacdata.available;
-                
+
                 // We have a dacdata that is not available
                 // but has an assigned laser which means that
                 // the laser object is waiting for that dac to
@@ -85,11 +86,11 @@ const vector<DacData>& DacAssigner ::updateDacList(){
                 break;
             }
         }
-        
+
         dacdata.available = nowavailable;
-        
+
     }
-    
+
     // now go through the new dac list again, and find
     // dacs that are not already in the existing list
     for(DacData& newdacdata : newdaclist) {
@@ -100,76 +101,76 @@ const vector<DacData>& DacAssigner ::updateDacList(){
                 break;
             }
         }
-        
+
         // if it's new, add it to the list
         if(isnew) {
             dacDataList.push_back(newdacdata);
         }
     }
-    
+
     // sort the list (the DacData class has overloaded operators
     // that make the list sortable alphanumerically by their IDs
 	std::sort(dacDataList.begin(), dacDataList.end());
-    
-    return dacDataList; 
-    
+
+    return dacDataList;
+
 }
 
 
 bool DacAssigner ::assignToLaser(const string& daclabel, Laser& laser){
-    
+
     DacData* dacdataptr = &getDacDataForLabel(daclabel);
-    
+
     if(&emptyDacData==dacdataptr) {
-        
+
         // no dacdata found! This usually means that we're loading
         // and the new dac hasn't been found yet. So we need to reserve
         // one.
-        
+
         // extract the type and id out of the daclabel (perhaps make this
         // a separate function?)
         string dactype = daclabel.substr(0, daclabel.find(" "));
         string dacid = daclabel.substr(daclabel.find(" ")+1, string::npos);
-        
+
         dacDataList.emplace_back(dactype, dacid, "", &laser);
         dacdataptr = &dacDataList.back();
         dacdataptr->available = false;
-       
+
         return false;
-        
+
     }
     DacData& dacdata = *dacdataptr;
-    
+
     ofLogNotice("DacAssigner::assignToLaser - " + dacdata.label, ofToString(laser.laserIndex));
-    
-  
+
+
     // get manager for type
     DacManagerBase* manager = getManagerForType(dacdata.type);
     if(manager==nullptr) {
         ofLogError("DacAssigner ::assignToLaser - invalid type " + dacdata.type);
         return false;
     }
-    
-    
+
+
     // if laser already has a dac then delete it!
     disconnectDacFromLaser(laser);
-    
+
     DacBase* dacToAssign = nullptr;
-    
+
     if(dacdata.assignedLaser!=nullptr) {
         // remove from current laser
-        
+
         // Is this bad? Maybe better to get the dac
         // from its manager?
         dacToAssign = dacdata.assignedLaser->getDac();
         dacdata.assignedLaser->removeDac();
         dacdata.assignedLaser = nullptr;
-        
+
     } else {
-    
+
         // get dac from manager
         dacToAssign = manager->getAndConnectToDac(dacdata.id);
-        
+
     }
     // if success
     if(dacToAssign!=nullptr) {
@@ -178,8 +179,8 @@ bool DacAssigner ::assignToLaser(const string& daclabel, Laser& laser){
         // store a reference to the laser in the
         // dacdata
         dacdata.assignedLaser = &laser;
-        
-        
+
+
         // clear the reference to this laser from the other dac data
         for(DacData& dacdataToCheck : dacDataList) {
             if(&dacdata == &dacdataToCheck) continue;
@@ -187,7 +188,7 @@ bool DacAssigner ::assignToLaser(const string& daclabel, Laser& laser){
                 dacdataToCheck.assignedLaser = nullptr;
             }
         }
-        
+
     } else {
         // if we can't get a dac object for the label
         // the dac must have disconnected since we updated
@@ -198,8 +199,8 @@ bool DacAssigner ::assignToLaser(const string& daclabel, Laser& laser){
         dacdata.available = false;
         return false;
     }
-    
-    return true; 
+
+    return true;
 }
 
 bool DacAssigner :: disconnectDacFromLaser(Laser& laser) {
@@ -217,12 +218,12 @@ DacManagerBase* DacAssigner :: getManagerForType(string type){
     for(DacManagerBase* manager : dacManagers) {
         if(manager->getType() == type) {
             return manager;
-            
+
             break;
         }
     }
     return nullptr;
-    
+
 }
 
 DacData& DacAssigner ::getDacDataForLabel(const string& label){
@@ -231,8 +232,8 @@ DacData& DacAssigner ::getDacDataForLabel(const string& label){
             return dacData;
         }
     }
-    
-    
+
+
     return emptyDacData ;
 }
 

@@ -19,6 +19,7 @@
 #include "ofxLaserLaser.h"
 #include "ofxLaserDacData.h"
 #include "ofxLaserDacManagerBase.h"
+#include "ofxLaserDacManagerAudio.h"
 #include "ofxLaserDacManagerLaserdock.h"
 #include "ofxLaserDacManagerEtherdream.h"
 #include "ofxLaserDacManagerHelios.h"
@@ -26,34 +27,34 @@
 namespace ofxLaser {
 
 class DacAssigner {
-    
+
     public :
-    
+
     // it's a Singleton so shouldn't ever have more than one.
     static DacAssigner * instance();
     static DacAssigner * dacAssigner;
-    
+
     DacAssigner();
     ~DacAssigner();
-    
+
     const vector<DacData>& getDacList();
     const vector<DacData>& updateDacList();
-    
+
     bool assignToLaser(const string& label, Laser& laser);
     bool disconnectDacFromLaser(Laser& laser);
     DacData& getDacDataForLabel(const string& label);
     DacData& getDacDataForLaser(Laser& laser);
-    
-    DacManagerBase* getManagerForType(string type); 
+
+    DacManagerBase* getManagerForType(string type);
 
     vector<DacManagerBase*> dacManagers;
     vector<DacData> dacDataList;
-    //vector<DacBase*> dacs; 
+    //vector<DacBase*> dacs;
     DacData emptyDacData;
 
     private:
-    
-    
+
+
 };
 }
 
